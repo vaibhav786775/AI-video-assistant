@@ -71,29 +71,46 @@ export class SarvamService {
   }
 
   static async transcribe(filePath) {
-    console.log("Transcribing with Sarvam API (Hinglish -> English)");
+    const dir = path.dirname(filePath);
+    const ext = path.extname(filePath);
+    const base = path.basename(filePath, ext);
     
-    // Split audio into 25s pieces
-    const duration = await this.getAudioDuration(filePath);
-    const totalPieces = Math.ceil(duration / SARVAM_PIECE_SECONDS);
-    
-    console.log(`Splitting audio of ${duration}s into ~${totalPieces} pieces.`);
-    const pieces = await this.splitAudio(filePath, duration);
-    
-    let fullText = "";
-
-    for (let i = 0; i < pieces.length; i++) {
-      const piece = pieces[i];
-      console.log(`  -> Sarvam piece ${i + 1}/${pieces.length} ...`);
+    try {
+      // Split audio into 25s pieces
+      const duration = await this.getAudioDuration(filePath);
+      const totalPieces = Math.ceil(duration / SARVAM_PIECE_SECONDS);
       
-      try {
-        const text = await this.sendToSarvam(piece);
-        fullText += text + " ";
-      } finally {
-        if (fs.existsSync(piece)) fs.unlinkSync(piece);
+      const pieces = await this.splitAudio(filePath, duration);
+      
+      let fullText = "";
+
+      for (let i = 0; i < pieces.length; i++) {
+        const piece = pieces[i];
+        
+        try {
+          const text = await this.sendToSarvam(piece);
+          fullText += text + " ";
+        } finally {
+          if (fs.existsSync(piece)) fs.unlinkSync(piece);
+        }
+      }
+
+      return fullText.trim();
+    } finally {
+      // Fallback robust cleanup for any chunks left behind
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir).filter(f => f.startsWith(`${base}_`) && f.endsWith(ext) && f !== path.basename(filePath));
+        for (const f of files) {
+          const piecePath = path.join(dir, f);
+          if (fs.existsSync(piecePath)) {
+            try {
+              fs.unlinkSync(piecePath);
+            } catch (e) {
+              console.error(`Failed to cleanup chunk: ${piecePath}`, e);
+            }
+          }
+        }
       }
     }
-
-    return fullText.trim();
   }
 }

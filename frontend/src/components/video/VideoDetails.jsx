@@ -77,15 +77,14 @@ export default function VideoDetails({ video }) {
       </div>
 
       {/* Right Content: Insights (Markdown) */}
-      <div className="flex-1 space-y-6 min-w-0">
-        <Card className="flex-1 h-full min-h-[400px]">
-          <h2 className="text-lg font-semibold font-heading text-white mb-6 border-b border-white/[0.06] pb-4">AI Extraction</h2>
-          <div className="prose-custom max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {`### Summary\n${video.summary || 'No summary available.'}\n\n### Action Items\n${video.actionItems || 'No action items found.'}\n\n### Key Decisions\n${video.keyDecisions || 'No key decisions found.'}\n\n### Open Questions\n${video.openQuestions || 'No open questions identified.'}`}
-            </ReactMarkdown>
-          </div>
-        </Card>
+      <div className="w-full flex-1 min-w-0">
+        <h2 className="text-3xl font-bold font-heading text-white mb-8">AI Extraction</h2>
+        
+        <div className="w-full text-gray-300 text-lg leading-[1.7] [&_h3]:text-2xl [&_h3]:font-semibold [&_h3]:text-white [&_h3]:mt-10 [&_h3]:mb-6 [&_ul]:list-disc [&_ul]:pl-6 [&_li]:mb-2 [&_p]:mb-6">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {`### Summary\n${video.summary || 'No summary available.'}\n\n### Action Items\n${video.actionItems || 'No action items found.'}\n\n### Key Decisions\n${video.keyDecisions || 'No key decisions found.'}\n\n### Open Questions\n${video.openQuestions || 'No open questions identified.'}`}
+          </ReactMarkdown>
+        </div>
       </div>
     </div>
   )

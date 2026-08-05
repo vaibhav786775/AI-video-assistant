@@ -22,7 +22,7 @@ export default function VideoDetailsPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="p-6 lg:p-8 max-w-4xl mx-auto"
+      className="p-6 lg:p-8"
     >
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-6 -ml-2">
         <ArrowLeft size={16} />

@@ -62,17 +62,11 @@ export class WhisperService {
         const isRateLimit = error.status === 429;
         
         if (attempts >= maxAttempts) {
-          console.log(`Giving up on chunk after ${maxAttempts} errors (${error.message}). Returning empty string.`);
           return '';
         }
         
         // Exponential backoff
         const backoff = 1000 * (2 ** (attempts - 1));
-        if (isRateLimit) {
-          console.log(`Rate limited on chunk. Retrying in ${backoff}ms...`);
-        } else {
-          console.log(`Error on chunk (${error.message}). Retrying in ${backoff}ms...`);
-        }
         await new Promise(res => setTimeout(res, backoff));
       }
     }
@@ -93,38 +87,51 @@ export class WhisperService {
     });
     const limit = pLimit(config.groqConcurrency);
     
-    console.log(`Splitting Audio...`);
-    const pieces = await this.splitAudio(filePath);
-    console.log(`Created ${pieces.length} chunks`);
+    const dir = path.dirname(filePath);
+    const ext = path.extname(filePath);
+    const base = path.basename(filePath, ext);
     
-    console.log(`Transcribing...`);
-    
-    let completed = 0;
-    
-    // Map pieces to limited concurrent promises
-    const promises = pieces.map((piece) => limit(async () => {
-      try {
-        const text = await this.sendToGroq(piece, groq);
-        completed++;
-        // Log periodically based on concurrency or every 4th chunk
-        if (completed % config.groqConcurrency === 0 || completed === pieces.length) {
-          console.log(`Completed ${completed}/${pieces.length}`);
+    try {
+      const pieces = await this.splitAudio(filePath);
+      
+      let completed = 0;
+      
+      // Map pieces to limited concurrent promises
+      const promises = pieces.map((piece) => limit(async () => {
+        try {
+          const text = await this.sendToGroq(piece, groq);
+          completed++;
+          return text;
+        } finally {
+          // Cleanup chunk immediately
+          if (fs.existsSync(piece)) fs.unlinkSync(piece);
         }
-        return text;
-      } finally {
-        // Cleanup chunk immediately
-        if (fs.existsSync(piece)) fs.unlinkSync(piece);
+      }));
+      
+      // Promise.all guarantees the order of the returned array matches the input pieces array
+      const texts = await Promise.all(promises);
+      const fullText = texts.join(" ").trim();
+
+      if (!fullText) {
+        throw new Error("Transcript file was not generated or returned empty by Groq API.");
       }
-    }));
-    
-    // Promise.all guarantees the order of the returned array matches the input pieces array
-    const texts = await Promise.all(promises);
-    const fullText = texts.join(" ").trim();
 
-    if (!fullText) {
-      throw new Error("Transcript file was not generated or returned empty by Groq API.");
+      return fullText;
+    } finally {
+      // Fallback robust cleanup for any chunks left behind (e.g. if splitAudio throws or process crashes midway)
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir).filter(f => f.startsWith(`${base}_groq_`) && f.endsWith(ext));
+        for (const f of files) {
+          const piecePath = path.join(dir, f);
+          if (fs.existsSync(piecePath)) {
+            try {
+              fs.unlinkSync(piecePath);
+            } catch (e) {
+              console.error(`Failed to cleanup chunk: ${piecePath}`, e);
+            }
+          }
+        }
+      }
     }
-
-    return fullText;
   }
 }

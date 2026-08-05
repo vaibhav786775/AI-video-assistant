@@ -1,19 +1,9 @@
-import { ChatMistralAI } from '@langchain/mistralai';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import { mapSummaryPrompt, combineSummaryPrompt, generateTitlePrompt } from '../prompts/summary.prompt.js';
-import { config } from '../config/index.js';
+import { getMistralLLM } from '../utils/llm.util.js';
 
 export class SummaryService {
-  static getLLM() {
-    if (!config.mistralApiKey) throw new Error("MISTRAL_API_KEY is not set.");
-    
-    return new ChatMistralAI({
-      apiKey: config.mistralApiKey,
-      modelName: "mistral-small-latest",
-      temperature: 0.3
-    });
-  }
 
   static async splitTranscript(transcript) {
     const splitter = new RecursiveCharacterTextSplitter({
@@ -24,7 +14,7 @@ export class SummaryService {
   }
 
   static async generateTitle(transcript) {
-    const llm = this.getLLM();
+    const llm = getMistralLLM(0.3);
     const chain = generateTitlePrompt.pipe(llm).pipe(new StringOutputParser());
     
     // Use first 2000 chars for title
@@ -32,7 +22,7 @@ export class SummaryService {
   }
 
   static async summarize(transcript) {
-    const llm = this.getLLM();
+    const llm = getMistralLLM(0.3);
     const chunks = await this.splitTranscript(transcript);
 
     const mapChain = mapSummaryPrompt.pipe(llm).pipe(new StringOutputParser());

@@ -21,7 +21,6 @@ export class ProcessController {
       // 1. Check for Duplicate (Intelligent Caching)
       const existingVideo = await Video.findOne({ user: userId, youtubeUrl });
       if (existingVideo) {
-        console.log(`Video ${youtubeUrl} already processed for user. Returning cached version.`);
         return res.status(200).json({
           title: existingVideo.title,
           summary: existingVideo.summary,
@@ -33,7 +32,6 @@ export class ProcessController {
         });
       }
 
-      console.log('Starting processing pipeline for:', youtubeUrl);
       const startTime = Date.now();
 
       // 2. Download
@@ -41,9 +39,6 @@ export class ProcessController {
 
       // 3. Transcribe
       const transcript = await TranscriptService.transcribe(audioPath, language);
-      console.log('Transcription complete.');
-
-      console.log('Generating Summary, Extracting Insights, and Generating Embeddings (Uploading to Pinecone)...');
       const pineconeNamespace = uuidv4();
       
       const [
@@ -78,8 +73,6 @@ export class ProcessController {
         processingTime
       });
       await videoRecord.save();
-
-      console.log('Completed Successfully');
 
       res.status(200).json({
         title,
