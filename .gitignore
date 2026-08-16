@@ -112,3 +112,5 @@ docker-data/
 *.zip
 *.tar
 *.gz
+
+*.md
